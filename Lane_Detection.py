@@ -236,9 +236,13 @@ def plotlines(image,Original,left,right):
         x_c=int(center_line[i])
         koko=(x_r-x)
         for i in range(koko):
+            if(x+i>1280-1 or x+i<0 ):
+                break
             black[y,x+i]=[0,0,51]
+
         for j in range(30):
-            #black[y,x_r]=[0,255,0]
+            if(x_c+j-15>1280-1 or x_c+j-15<0 ):
+                break
             black[y,x_c-15+j]=[0,153,76]
 #-----------------------------------------------------------------------
 
