@@ -216,6 +216,11 @@ def Histogram(image):
                 rightlane=np.append(rightlane,[(c+d)/2,(a+b)/2])
     rangeleft=int(leftlane.shape[0]/2)
     left=np.reshape(leftlane,[rangeleft,2])
+    #print(leftlane[0],leftlane[1]+800,'leftlane')
+    if (rightlane.shape[0]==0):
+        rightlane=np.append(rightlane,leftlane[0])
+        rightlane=np.append(rightlane,leftlane[1]+800)
+
     rangeright=int(rightlane.shape[0]/2)
     right=np.reshape(rightlane,[rangeright,2])
 
@@ -299,8 +304,8 @@ def Imageprocessor(path):
 
         count += 1
         print(count)
-        cv2.imwrite('%d.jpg' %count,pakka)
-        #img_array.append(image)
+        #cv2.imwrite('%d.jpg' %count,pakka)
+        img_array.append(pakka)
         success, image = vidObj.read()
 
     return img_array,size
