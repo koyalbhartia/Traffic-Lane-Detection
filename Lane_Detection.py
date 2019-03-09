@@ -216,11 +216,13 @@ def Histogram(image):
                 rightlane=np.append(rightlane,[(c+d)/2,(a+b)/2])
     rangeleft=int(leftlane.shape[0]/2)
     left=np.reshape(leftlane,[rangeleft,2])
-    #print(leftlane[0],leftlane[1]+800,'leftlane')
-    if (rightlane.shape[0]==0):
+    try:
+        if(rightlane==[]):
+            raise ValueError
+
+    except ValueError:
         rightlane=np.append(rightlane,leftlane[0])
         rightlane=np.append(rightlane,leftlane[1]+800)
-
     rangeright=int(rightlane.shape[0]/2)
     right=np.reshape(rightlane,[rangeright,2])
 
@@ -249,23 +251,20 @@ def plotlines(image,Original,left,right):
             if(x_c+j-15>1280-1 or x_c+j-15<0 ):
                 break
             black[y,x_c-15+j]=[0,153,76]
-#-----------------------------------------------------------------------
-
     slope=(math.atan((left_fitx[720-50]-left_fitx[50])/620))*180/np.pi
     print(slope)
-
-#-----------------------------------------------------------------------
-
     return black,slope
 
 def Text(image,slope):
-    slp=np.abs(round(slope,2))
-    info="Angle of turning is: "+str(slp)+' degrees'
+    slp=round(slope,2)
+    info="Angle of turning is: "+str(np.abs(slp))+' degrees'
     cv2.putText(image,info,(350,100),cv2.FONT_HERSHEY_SIMPLEX,1,(51,0,0),3,cv2.LINE_AA)
     if(slp>0):
         cv2.putText(image,'Turn LEFT',(540,200),cv2.FONT_HERSHEY_SIMPLEX,1,(0,51,102),3,cv2.LINE_AA)
+    elif(slp<0):
+        cv2.putText(image,'Turn RIGHT',(540,200),cv2.FONT_HERSHEY_SIMPLEX,1,(51,102,0),3,cv2.LINE_AA)
     else:
-        cv2.putText(image,'Turn RIGHT',(540,200),cv2.FONT_HERSHEY_SIMPLEX,1,(0,255,0),3,cv2.LINE_AA)
+        cv2.putText(image,'Go STRAIGHT',(540,200),cv2.FONT_HERSHEY_SIMPLEX,1,(51,0,102),3,cv2.LINE_AA)
 
 
     return image
@@ -304,15 +303,15 @@ def Imageprocessor(path):
 
         count += 1
         print(count)
-        #cv2.imwrite('%d.jpg' %count,pakka)
-        img_array.append(pakka)
+        cv2.imwrite('%d.jpg' %count,pakka)
+        #img_array.append(pakka)
         success, image = vidObj.read()
 
     return img_array,size
 #--------------------------------------------------------------
 #video file
 def video(img_array,size):
-    video=cv2.VideoWriter('video2.avi',cv2.VideoWriter_fourcc(*'DIVX'), 16.0,size)
+    video=cv2.VideoWriter('video.avi',cv2.VideoWriter_fourcc(*'DIVX'), 16.0,size)
     for i in range(len(img_array)):
         video.write(img_array[i])
     video.release()
