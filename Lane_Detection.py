@@ -18,7 +18,7 @@ import cv2
 def binary(A):
     for i in range(0,len(A)):
         for j in range(0,len(A[0])):
-            if (A[i,j]>150):
+            if (A[i,j]>100):
                 A[i,j]=1
             else:
                 A[i,j]=0
@@ -55,12 +55,14 @@ def perspective_view(image):
         [1280-50,720-80]], dtype = "float32")
 
 
-
     M1,status = cv2.findHomography(source, dst1)
-    warp1 = cv2.warpPerspective(image.copy(), M1, (1280,720))
-    warp2=cv2.medianBlur(warp1,3)
-    bin=binary(warp1)
-    return bin
+
+    warp1 = cv2.warpPerspective(image, M1, (1280,720))
+    #warp2=cv2.medianBlur(warp1,3)
+    blur=cv2.GaussianBlur(warp1.copy(),(5,5),0)
+    smooth=cv2.addWeighted(blur,1.5,warp1,-0.5,0)
+    #bin=binary(warp1)
+    return smooth
 
 def inverseperceptive(image):
     dst1 = np.array([
@@ -154,7 +156,7 @@ def Undistort(image):
     destination = cv2.undistort(image, K, dist, None, K)
 
     return destination
-#-------------------------------------------------------------------------------
+
 def ExtractROI(image,length,width):
     black=np.zeros((360,1280))
 
@@ -168,15 +170,17 @@ def Yellowlane(image):
     lower = np.array([20, 100, 100])
     upper = np.array([25, 255, 255])
     mask = cv2.inRange(hsv, lower, upper)
-    return mask
+    transform_y=perspective_view(mask)
+    blur_y=cv2.GaussianBlur(transform_y.copy(),(5,5),0)
+    return blur_y
 
 def Whitelane(image):
-    gray =cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+    #gray =cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
     kernel_size = 5
-    blur_gray = cv2.GaussianBlur(gray,(kernel_size, kernel_size),0)
-    mask = cv2.inRange(blur_gray, 230, 255)
+    blur_gray = cv2.GaussianBlur(image,(kernel_size, kernel_size),0)
+    mask = cv2.inRange(blur_gray, 180, 255)
     #edges = cv2.Canny(gray,100,200)
-    return mask,gray
+    return mask
 
 def Hough_lines(image,Original):
     width,height=image.shape
@@ -210,7 +214,7 @@ def Histogram(image):
             b=64*(i+1)
             img=image[d:c,a:b]
             hist = cv2.calcHist([img],[0],None,[3],[0.5,1.5])
-            if(hist[1]>20 and i<10):
+            if(hist[1]>1 and i<10):
                 leftlane=np.append(leftlane,[(c+d)/2,(a+b)/2])
             if(hist[1]>4 and 20-i<10):
                 rightlane=np.append(rightlane,[(c+d)/2,(a+b)/2])
@@ -228,13 +232,40 @@ def Histogram(image):
 
     return image,left,right
 
-def plotlines(image,Original,left,right):
+def plotlines(image,Original,left,right,polyfit_old,count):
     left_fit = np.polyfit(left[:,0], left[:,1], 2)
-    Average=int(right.mean(0)[1])
+    right_fit = np.polyfit(right[:,0], right[:,1], 2)
+
+    buffer_m=10000
+    buffer_c=10000.001
+    if (count==0):
+        polyfit_old=[left_fit[0],left_fit[1]]
+
+    if ((left_fit[0]-polyfit_old[0])>buffer_m):
+        left_fit[0]=polyfit_old[0]+buffer_m
+        print(1)
+    elif ((left_fit[0]-polyfit_old[0])<-buffer_m):
+        left_fit[0]=polyfit_old[0]-buffer_m
+        print(2)
+    else:
+        left_fit[0]=left_fit[0]
+        print("kuch nahi")
+
+    if ((left_fit[1]-polyfit_old[1])>buffer_c):
+        left_fit[1]=polyfit_old[1]+buffer_c
+        print(1)
+    elif ((left_fit[1]-polyfit_old[1])<-buffer_c):
+        left_fit[1]=polyfit_old[1]-buffer_c
+        print(2)
+    else:
+        left_fit[1]=left_fit[1]
+        print("kuch nahi")
+
+
     ploty = np.linspace(0, image.shape[0]-1, image.shape[0])
     left_fitx = left_fit[0]*ploty*ploty + left_fit[1]*ploty + left_fit[2]
-    right_fitx =left_fit[0]*ploty*ploty + left_fit[1]*ploty + (Average-left_fit[0]*720*720-left_fit[1]*720)
-    center_line=left_fit[0]*ploty*ploty + left_fit[1]*ploty + (int((Average-left_fit[0]*720*720-left_fit[1]*720+left_fit[2])/2))
+    right_fitx =right_fit[0]*ploty*ploty + right_fit[1]*ploty + right_fit[2]
+    center_line=(left_fit[0]*ploty*ploty+right_fit[0]*ploty*ploty)/2 + (left_fit[1]*ploty+right_fit[1]*ploty)/2 + (left_fit[2]+right_fit[2])/2
     black=Original*0
     for i in range(ploty.shape[0]):
         y=int(ploty[i])
@@ -247,13 +278,18 @@ def plotlines(image,Original,left,right):
                 break
             black[y,x+i]=[0,0,51]
 
-        for j in range(30):
-            if(x_c+j-15>1280-1 or x_c+j-15<0 ):
-                break
-            black[y,x_c-15+j]=[0,153,76]
+    for j in range(10):
+        if(x_c+j-15>1280-1 or x_c+j-15<0 ):
+            break
+        indexf=70*(j+1)-10
+        indexi=70*(j)+10
+        pointf=(int(center_line[indexf]),int(ploty[indexf]))
+        pointi=(int(center_line[indexi]),int(ploty[indexi]))
+        cv2.arrowedLine(black, pointf, pointi, (0,153,76), 15,4,0,0.5)
     slope=(math.atan((left_fitx[720-50]-left_fitx[50])/620))*180/np.pi
     print(slope)
-    return black,slope
+    polyfit_old=left_fit
+    return black,slope,polyfit_old
 
 def Text(image,slope):
     slp=round(slope,2)
@@ -268,10 +304,8 @@ def Text(image,slope):
 
 
     return image
-
 #-------------------------------------------------------------------------------
 def Imageprocessor(path):
-
     vidObj = cv2.VideoCapture(path)
     count = 0
     success = 1
@@ -279,25 +313,25 @@ def Imageprocessor(path):
     while (success):
         if (count==0):
             success, image = vidObj.read()
-
         width,height,layers=image.shape
         size = (width,height)
         image=Undistort(image)
         undist_img=image.copy()
-        image_y=Yellowlane(image)
-        image_w,gray=Whitelane(image)
-        Merge=image_y+image_w
-        gray_merge=cv2.bitwise_and(Merge,gray)
-
-        transform=perspective_view(Merge)
-        transform_original=transform.copy()
-        image_per=ExtractROI(transform,360,1280)
-
-        Histo,leftlane,rightlane=Histogram(transform)
-        tr_with_lines,slope=plotlines(transform_original,undist_img,leftlane,rightlane)
+        gray =cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+        transform_w=perspective_view(gray)
+        image_w=Whitelane(transform_w)
+        image_y=Yellowlane(undist_img)
+        final_transform=image_w+image_y
+        final_transform_original=final_transform.copy()
+        bin=binary(final_transform)
+        Histo,leftlane,rightlane=Histogram(bin)
+        if (count==0):
+            back=[0,0]
+        tr_with_lines,slope,back_n=plotlines(final_transform_original,undist_img,leftlane,rightlane,back,count)
+        back=back_n
 
         global_lines=inverseperceptive(tr_with_lines)
-        #gray_merge=cv2.bitwise_or(undist_img,global_lines)
+        gray_merge=cv2.bitwise_or(undist_img,global_lines)
         result=cv2.addWeighted(undist_img,1,global_lines,1,0)
         pakka=Text(result,slope)
 
@@ -308,14 +342,13 @@ def Imageprocessor(path):
         success, image = vidObj.read()
 
     return img_array,size
-#--------------------------------------------------------------
+
 #video file
 def video(img_array,size):
     video=cv2.VideoWriter('video.avi',cv2.VideoWriter_fourcc(*'DIVX'), 16.0,size)
     for i in range(len(img_array)):
         video.write(img_array[i])
     video.release()
-#---------------------------------------------------------------
 # main
 if __name__ == '__main__':
 
