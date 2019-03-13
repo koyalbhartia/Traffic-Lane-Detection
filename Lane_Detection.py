@@ -116,35 +116,6 @@ def homography_calc(src,dest):
 
     return req_v
 
-def Projection_mat(homography):
-   # homography = homography*(-1)
-   # Calling the projective matrix function
-   K = np.mat([[  1.15422732e+03 , 0.00000000e+00  , 6.71627794e+02],
-    [  0.00000000e+00 ,  1.14818221e+03  , 3.86046312e+02],
-    [  0.00000000e+00 ,  0.00000000e+00  , 1.00000000e+00]])
-
-   K=K.T
-   rot_trans = np.dot(la.inv(K), homography)
-   col_1 = rot_trans[:, 0]
-   col_2 = rot_trans[:, 1]
-   col_3 = rot_trans[:, 2]
-   l = math.sqrt(la.norm(col_1, 2) * la.norm(col_2, 2))
-   rot_1 = col_1 / l
-   rot_2 = col_2 / l
-   translation = col_3 / l
-   c = rot_1 + rot_2
-   p = np.cross(rot_1, rot_2)
-   d = np.cross(c, p)
-   rot_1 = np.dot(c / np.linalg.norm(c, 2) + d / np.linalg.norm(d, 2), 1 / math.sqrt(2))
-   rot_2 = np.dot(c / np.linalg.norm(c, 2) - d / np.linalg.norm(d, 2), 1 / math.sqrt(2))
-   rot_3 = np.cross(rot_1, rot_2)
-
-   projection = np.stack((rot_1, rot_2, rot_3, translation)).T
-   return np.dot(K, projection)
-
-    #def Three_d_cube(K, homography):
-    #    return 0
-
 def Undistort(image):
     dist = np.mat([ -2.42565104e-01 , -4.77893070e-02 , -1.31388084e-03 , -8.79107779e-05,
         2.20573263e-02])
@@ -184,8 +155,6 @@ def Whitelane(image):
 
 def Hough_lines(image,Original):
     width,height=image.shape
-    #print(np.shape(image),"image")
-    #print(np.shape(Original),"ORIG")
 
     edges = cv2.Canny(image, 100, 200)
     rho = np.ceil(np.sqrt(width*width+height*height))
@@ -200,7 +169,7 @@ def Hough_lines(image,Original):
         for x1,y1,x2,y2 in line:
             cv2.line(line_image,(x1,y1),(x2,y2),(255,0,0),5)
 
-    #lines_edges = cv2.addWeighted(lines, 0.8, line_image, 1, 0)
+    #lines_edges = cv2.addWeighted(lines, 0.8, line_image, 1, 0)`````
     return line_image
 
 def Histogram(image):
@@ -236,29 +205,29 @@ def plotlines(image,Original,left,right,polyfit_old,count):
     left_fit = np.polyfit(left[:,0], left[:,1], 2)
     right_fit = np.polyfit(right[:,0], right[:,1], 2)
 
-    buffer_m=10000
-    buffer_c=10000.001
+    buffer_m=1000
+    buffer_c=1000
     if (count==0):
-        polyfit_old=[left_fit[0],left_fit[1]]
+        polyfit_old=[left_fit[1],left_fit[2]]
 
-    if ((left_fit[0]-polyfit_old[0])>buffer_m):
-        left_fit[0]=polyfit_old[0]+buffer_m
+    if ((left_fit[1]-polyfit_old[0])>buffer_m):
+        left_fit[1]=polyfit_old[0]+buffer_m
         print(1)
-    elif ((left_fit[0]-polyfit_old[0])<-buffer_m):
-        left_fit[0]=polyfit_old[0]-buffer_m
-        print(2)
-    else:
-        left_fit[0]=left_fit[0]
-        print("kuch nahi")
-
-    if ((left_fit[1]-polyfit_old[1])>buffer_c):
-        left_fit[1]=polyfit_old[1]+buffer_c
-        print(1)
-    elif ((left_fit[1]-polyfit_old[1])<-buffer_c):
-        left_fit[1]=polyfit_old[1]-buffer_c
+    elif ((left_fit[1]-polyfit_old[0])<-buffer_m):
+        left_fit[1]=polyfit_old[0]-buffer_m
         print(2)
     else:
         left_fit[1]=left_fit[1]
+        print("kuch nahi")
+
+    if ((left_fit[2]-polyfit_old[1])>buffer_c):
+        left_fit[2]=polyfit_old[1]+buffer_c
+        print(1)
+    elif ((left_fit[2]-polyfit_old[1])<-buffer_c):
+        left_fit[2]=polyfit_old[1]-buffer_c
+        print(2)
+    else:
+        left_fit[2]=left_fit[2]
         print("kuch nahi")
 
 
