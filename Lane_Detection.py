@@ -1,3 +1,46 @@
+'''
+/************************************************************************
+ MIT License
+
+ Copyright (c) 2018 Harsh Kakashaniya,Koyal Bhartia, Aalap Rana
+
+ Permission is hereby granted, free of charge, to any person obtaining a copy
+ of this software and associated documentation files (the "Software"), to deal
+ in the Software without restriction, including without limitation the rights
+ to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ copies of the Software, and to permit persons to whom the Software is
+ furnished to do so, subject to the following conditions:
+
+ The above copyright notice and this permission notice shall be included in all
+ copies or substantial portions of the Software.
+
+ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ SOFTWARE.
+ *************************************************************************/
+
+/**
+ *  @file    final.py
+ *  @author  Harsh Kakashaniya, Koyal Bhartia and Aalap Rana
+ *  @date    13/3/2019
+ *  @version 1.0
+ *
+ *  @brief Project 2,Lane Detection
+ *
+ *  @section DESCRIPTION
+ *
+ *  This is code has 3 parts,
+ 1. Pre Processing of image
+ 2. Perceptive transform
+ 3. Histogram for lane
+ 4. Integrate all 3 parts and  take inverse transfrorm
+ *
+ */
+ '''
 import argparse
 import numpy as np
 import os, sys
@@ -14,32 +57,27 @@ except:
     pass
 import cv2
 #-------------------------------------------------------------------------------
-
+# @brief Function for converting gray scale to binary
+#
+#  @param Matrix
+#
+#  @return Matrix
+#
 def binary(A):
     for i in range(0,len(A)):
         for j in range(0,len(A[0])):
+            #print(A[i,j])
             if (A[i,j]>100):
                 A[i,j]=1
             else:
                 A[i,j]=0
     return A
-
-def Superimposing(ctr,image,src):
-    #print(ctr)
-    pts_dst = np.array(ctr,dtype=float)
-    pts_src = np.array([[0,0],[511, 0],[511, 511],[0,511]],dtype=float)
-
-    h, status = cv2.findHomography(pts_src, pts_dst)
-
-    #print(image.shape[1],image.shape[0])
-
-    temp = cv2.warpPerspective(src, h,(image.shape[1],image.shape[0]));
-    cv2.fillConvexPoly(image, pts_dst.astype(int), 0, 16);
-
-    image = image + temp;
-
-    return image,h
-
+# @brief Function for taking perspective transform
+#
+#  @param Image Matrix
+#
+#  @return Transformed Matrix
+#
 def perspective_view(image):
     #sequence tl,tr,br,bl
     dst1 = np.array([
@@ -56,14 +94,16 @@ def perspective_view(image):
 
 
     M1,status = cv2.findHomography(source, dst1)
-
     warp1 = cv2.warpPerspective(image, M1, (1280,720))
-    #warp2=cv2.medianBlur(warp1,3)
     blur=cv2.GaussianBlur(warp1.copy(),(5,5),0)
     smooth=cv2.addWeighted(blur,1.5,warp1,-0.5,0)
-    #bin=binary(warp1)
     return smooth
-
+# @brief Function for get back inverse perspective transform
+#
+#  @param Image Matrix
+#
+#  @return Transformed Matrix
+#
 def inverseperceptive(image):
     dst1 = np.array([
         [0,720],
@@ -84,38 +124,12 @@ def inverseperceptive(image):
     warp2=cv2.medianBlur(warp1,3)
 
     return warp2
-
-def homography_calc(src,dest):
-    c1 = tag_des[0]
-    c2 = tag_des[1]
-    c3 = tag_des[2]
-    c4 = tag_des[3]
-
-    w1 = src[0]
-    w2 = src[1]
-    w3 = src[2]
-    w4 = src[3]
-
-    A=np.array([[w1[0],w1[1],1,0,0,0,-c1[0]*w1[0],-c1[0]*w1[1],-c1[0]],
-                [0,0,0,w1[0], w1[1],1,-c1[1]*w1[0],-c1[1]*w1[1],-c1[1]],
-                [w2[0],w2[1],1,0,0,0,-c2[0]*w2[0],-c2[0]*w2[1],-c2[0]],
-                [0,0,0,w2[0], w2[1],1,-c2[1]*w2[0],-c2[1]*w2[1],-c2[1]],
-                [w3[0],w3[1],1,0,0,0,-c3[0]*w3[0],-c3[0]*w3[1],-c3[0]],
-                [0,0,0,w3[0], w3[1],1,-c3[1]*w3[0],-c3[1]*w3[1],-c3[1]],
-                [w4[0],w4[1],1,0,0,0,-c4[0]*w4[0],-c4[0]*w4[1],-c4[0]],
-                [0,0,0,w4[0], w4[1],1,-c4[1]*w4[0],-c4[1]*w4[1],-c4[1]]])
-
-    #Performing SVD
-    u, s, vt = la.svd(A)
-
-            # normalizing by last element of v
-            #v =np.transpose(v_col)
-    v = vt[8:,]/vt[8][8]
-
-    req_v = np.reshape(v,(3,3))
-
-    return req_v
-
+# @brief Function for Undistorting image
+#
+#  @param Image Matrix
+#
+#  @return Transformed Matrix
+#
 def Undistort(image):
     dist = np.mat([ -2.42565104e-01 , -4.77893070e-02 , -1.31388084e-03 , -8.79107779e-05,
         2.20573263e-02])
@@ -127,15 +141,24 @@ def Undistort(image):
     destination = cv2.undistort(image, K, dist, None, K)
 
     return destination
-
+# @brief Function for Extracting ROI
+#
+#  @param Image Matrix
+#
+#  @return Transformed Matrix
+#
 def ExtractROI(image,length,width):
     black=np.zeros((360,1280))
-
     # Crop image
     imageROI = image[length:720,0:1280]
     black=np.concatenate((black, imageROI), axis=0)
     return black
-
+# @brief Function for yellow lane detection
+#
+#  @param Image Matrix, length and width of ROI
+#
+#  @return Transformed Matrix
+#
 def Yellowlane(image):
     hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HLS)
     lower = np.array([20, 100, 100])
@@ -144,7 +167,12 @@ def Yellowlane(image):
     transform_y=perspective_view(mask)
     blur_y=cv2.GaussianBlur(transform_y.copy(),(5,5),0)
     return blur_y
-
+# @brief Function for White lane detection
+#
+#  @param Image Matrix
+#
+#  @return Transformed Matrix
+#
 def Whitelane(image):
     #gray =cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
     kernel_size = 5
@@ -152,7 +180,12 @@ def Whitelane(image):
     mask = cv2.inRange(blur_gray, 180, 255)
     #edges = cv2.Canny(gray,100,200)
     return mask
-
+# @brief Function for getting Hough lines on image
+#
+#  @param Image Matrix and original image
+#
+#  @return Transformed Matrix
+#
 def Hough_lines(image,Original):
     width,height=image.shape
 
@@ -169,9 +202,14 @@ def Hough_lines(image,Original):
         for x1,y1,x2,y2 in line:
             cv2.line(line_image,(x1,y1),(x2,y2),(255,0,0),5)
 
-    #lines_edges = cv2.addWeighted(lines, 0.8, line_image, 1, 0)`````
+    #lines_edges = cv2.addWeighted(lines, 0.8, line_image, 1, 0)
     return line_image
-
+# @brief Function for getting Histogram Silding
+#
+#  @param Image Matrix
+#
+#  @return left lane and right lane points
+#
 def Histogram(image):
     leftlane=[]
     rightlane=[]
@@ -182,10 +220,13 @@ def Histogram(image):
             a=64*(i)
             b=64*(i+1)
             img=image[d:c,a:b]
-            hist = cv2.calcHist([img],[0],None,[3],[0.5,1.5])
-            if(hist[1]>1 and i<10):
+            hist = cv2.calcHist([img],[0],None,[3],[225,285])
+            #plt.plot(hist)
+            #plt.show()
+            #print(hist[4])
+            if(hist[1]>10 and i<10):
                 leftlane=np.append(leftlane,[(c+d)/2,(a+b)/2])
-            if(hist[1]>4 and 20-i<10):
+            if(hist[1]>3 and 20-i<10):
                 rightlane=np.append(rightlane,[(c+d)/2,(a+b)/2])
     rangeleft=int(leftlane.shape[0]/2)
     left=np.reshape(leftlane,[rangeleft,2])
@@ -200,66 +241,48 @@ def Histogram(image):
     right=np.reshape(rightlane,[rangeright,2])
 
     return image,left,right
-
-def plotlines(image,Original,left,right,polyfit_old,count):
+# @brief Function for ploting on unwraped image
+#
+#  @param Image Matrix, Orignal Matrix, left lane, right lane
+#
+#  @return Transformed Matrix,slope
+#
+def plotlines(image,Original,left,right):
     left_fit = np.polyfit(left[:,0], left[:,1], 2)
     right_fit = np.polyfit(right[:,0], right[:,1], 2)
 
-    buffer_m=1000
-    buffer_c=1000
-    if (count==0):
-        polyfit_old=[left_fit[1],left_fit[2]]
-
-    if ((left_fit[1]-polyfit_old[0])>buffer_m):
-        left_fit[1]=polyfit_old[0]+buffer_m
-        print(1)
-    elif ((left_fit[1]-polyfit_old[0])<-buffer_m):
-        left_fit[1]=polyfit_old[0]-buffer_m
-        print(2)
-    else:
-        left_fit[1]=left_fit[1]
-        print("kuch nahi")
-
-    if ((left_fit[2]-polyfit_old[1])>buffer_c):
-        left_fit[2]=polyfit_old[1]+buffer_c
-        print(1)
-    elif ((left_fit[2]-polyfit_old[1])<-buffer_c):
-        left_fit[2]=polyfit_old[1]-buffer_c
-        print(2)
-    else:
-        left_fit[2]=left_fit[2]
-        print("kuch nahi")
-
-
-    ploty = np.linspace(0, image.shape[0]-1, image.shape[0])
-    left_fitx = left_fit[0]*ploty*ploty + left_fit[1]*ploty + left_fit[2]
-    right_fitx =right_fit[0]*ploty*ploty + right_fit[1]*ploty + right_fit[2]
-    center_line=(left_fit[0]*ploty*ploty+right_fit[0]*ploty*ploty)/2 + (left_fit[1]*ploty+right_fit[1]*ploty)/2 + (left_fit[2]+right_fit[2])/2
+    window = np.linspace(0, image.shape[0]-1, image.shape[0])
+    left_fitx = left_fit[0]*window*window + left_fit[1]*window + left_fit[2]
+    right_fitx =right_fit[0]*window*window + right_fit[1]*window + right_fit[2]
+    center_line=(left_fit[0]*window*window+right_fit[0]*window*window)/2 + (left_fit[1]*window+right_fit[1]*window)/2 + (left_fit[2]+right_fit[2])/2
     black=Original*0
-    for i in range(ploty.shape[0]):
-        y=int(ploty[i])
+    for i in range(window.shape[0]):
+        y=int(window[i])
         x=int(left_fitx[i])
         x_r=int(right_fitx[i])
         x_c=int(center_line[i])
-        koko=(x_r-x)
-        for i in range(koko):
+        total_lane=(x_r-x)
+        for i in range(total_lane):
             if(x+i>1280-1 or x+i<0 ):
                 break
             black[y,x+i]=[0,0,51]
 
-    for j in range(10):
+    for j in range(5):
         if(x_c+j-15>1280-1 or x_c+j-15<0 ):
             break
-        indexf=70*(j+1)-10
-        indexi=70*(j)+10
-        pointf=(int(center_line[indexf]),int(ploty[indexf]))
-        pointi=(int(center_line[indexi]),int(ploty[indexi]))
+        indexf=120+120*(j+1)-25
+        indexi=120+120*(j)+25
+        pointf=(int(center_line[indexf]),int(window[indexf]))
+        pointi=(int(center_line[indexi]),int(window[indexi]))
         cv2.arrowedLine(black, pointf, pointi, (0,153,76), 15,4,0,0.5)
     slope=(math.atan((left_fitx[720-50]-left_fitx[50])/620))*180/np.pi
-    print(slope)
-    polyfit_old=left_fit
-    return black,slope,polyfit_old
-
+    return black,slope
+# @brief Function for text input in the Image
+#
+#  @param Image Matrix, slope
+#
+#  @return Transformed Matrix
+#
 def Text(image,slope):
     slp=round(slope,2)
     info="Angle of turning is: "+str(np.abs(slp))+' degrees'
@@ -274,7 +297,13 @@ def Text(image,slope):
 
     return image
 #-------------------------------------------------------------------------------
-def Imageprocessor(path):
+# @brief Function for pipeline for whole code
+#
+#  @param Path of Video
+#
+#  @return Array of images, size
+#
+def Pipeline(path):
     vidObj = cv2.VideoCapture(path)
     count = 0
     success = 1
@@ -283,7 +312,7 @@ def Imageprocessor(path):
         if (count==0):
             success, image = vidObj.read()
         width,height,layers=image.shape
-        size = (width,height)
+        size = (height,width)
         image=Undistort(image)
         undist_img=image.copy()
         gray =cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
@@ -292,27 +321,28 @@ def Imageprocessor(path):
         image_y=Yellowlane(undist_img)
         final_transform=image_w+image_y
         final_transform_original=final_transform.copy()
-        bin=binary(final_transform)
-        Histo,leftlane,rightlane=Histogram(bin)
-        if (count==0):
-            back=[0,0]
-        tr_with_lines,slope,back_n=plotlines(final_transform_original,undist_img,leftlane,rightlane,back,count)
-        back=back_n
-
-        global_lines=inverseperceptive(tr_with_lines)
-        gray_merge=cv2.bitwise_or(undist_img,global_lines)
-        result=cv2.addWeighted(undist_img,1,global_lines,1,0)
-        pakka=Text(result,slope)
-
+        Histo,leftlane,rightlane=Histogram(final_transform)
+        tr_with_lines,slope=plotlines(final_transform_original,undist_img,leftlane,rightlane)
+        Lane_in_wrap=inverseperceptive(tr_with_lines)
+        gray_merge=cv2.bitwise_or(undist_img,Lane_in_wrap)
+        result=cv2.addWeighted(undist_img,1,Lane_in_wrap,1,0)
+        Final=Text(result,slope)
         count += 1
+        print('Frame processing index')
         print(count)
-        cv2.imwrite('%d.jpg' %count,pakka)
-        #img_array.append(pakka)
+        #cv2.imwrite('%d.jpg' %count,Final)
+        img_array.append(Final)
         success, image = vidObj.read()
 
     return img_array,size
 
 #video file
+# @brief Function for video processing
+#
+#  @param Array of images, size
+#
+#  @return void
+#
 def video(img_array,size):
     video=cv2.VideoWriter('video.avi',cv2.VideoWriter_fourcc(*'DIVX'), 16.0,size)
     for i in range(len(img_array)):
@@ -322,5 +352,5 @@ def video(img_array,size):
 if __name__ == '__main__':
 
     # Calling the function
-    Image,size=Imageprocessor('project_video.mp4')
+    Image,size=Pipeline('project_video.mp4')
     video(Image,size)
